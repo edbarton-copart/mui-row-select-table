@@ -124,7 +124,7 @@ class RowSelectTableFooter extends Component {
     return (
       <div className={styles.mainPagerContent}>
         <div className={styles.showResults}>
-          <span style={{ marginLeft: '5px', marginRight: '20px' }}>
+          <span style={{ marginLeft: '5px', marginRight: '44px' }}>
             {'Showing  '}
             <FlatButton
               onTouchTap={this.handleTouchTap}
@@ -139,16 +139,13 @@ class RowSelectTableFooter extends Component {
               targetOrigin={{ horizontal: 'left', vertical: 'bottom' }}
               onRequestClose={this.handleRequestClose}
             >
-              <Menu
-                onItemTouchTap={this.handleChange}
-              >
+              <Menu onItemTouchTap={this.handleChange}>
                 {pageSizeOptions.map((pageSizeOption, i) => <MenuItem value={i} key={i} primaryText={pageSizeOption} />)}
               </Menu>
             </Popover>
             {`  Results${resultCount ? ` of ${resultCount}` : ''}`}
           </span>
           <span>
-            {'Go To Page'}
             <TextField
               ref={(node) => { this.pageField = node }}
               id="text-field-controlled"
@@ -159,7 +156,7 @@ class RowSelectTableFooter extends Component {
               type="number"
               hintText="Go to Page"
               hintStyle={{ fontSize: '10px' }}
-              style={{ marginLeft: '5px', marginRight: '5px', width: '60px' }}
+              style={{ marginLeft: '5px', marginRight: '5px', width: '64px' }}
               underlineFocusStyle={{ width: '50px', borderColor: '#01579b' }}
               min={1}
               max={maxPage}
@@ -168,7 +165,6 @@ class RowSelectTableFooter extends Component {
               label="Go"
               labelStyle={{ color: 'white' }}
               backgroundColor="#1D5AB9"
-              type="submit"
               onClick={() => inputValue !== '' && this.pageChange(Math.min(inputValue, maxPage) - 1)}
             />
           </span>

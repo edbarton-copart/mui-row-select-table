@@ -4,48 +4,60 @@ import cn from 'classnames'
 import { CircularProgress } from 'material-ui'
 import { ASCENDING, DESCENDING } from './getActions'
 import Footer from './Footer'
-import { headerCell, sortableColumnHeaderCell, selectedRow, row, cell, table, circularProgress } from './RowSelectTable.css'
+import { headerCell, sortableColumnHeaderCell, selectedRow, row, cell, table, circularProgress, progressContainer } from './RowSelectTable.css'
 
 export const RowSelectTableSortIcon = ({ direction }) =>
   <span className={cn('fa', `fa-sort-alpha-${direction}`)} style={{ paddingLeft: '.5em' }} />
 
-export const RowSelectTableHeader = ({ columnMetadata, sortColumnName, sortDirection, changeSort, onSelectAllRows = null, isAllRowsSelected = null, rowSelectionEnabled = null }) =>
+export const RowSelectTableHeader = ({ columnMetadata, sortColumnName, sortDirection, changeSort, onSelectAllRows = null, isAllRowsSelected = null, rowSelectionEnabled = null, headerStyle }) =>
   <thead>
-    <tr>
-      { rowSelectionEnabled ?
-        (<th className={cn(headerCell)} >
-          <input checked={isAllRowsSelected} onClick={(e) => onSelectAllRows(e)} type="checkbox" />
-        </th>) : null}
+  <tr>
+    { rowSelectionEnabled ?
+      (<th className={cn(headerCell)} >
+        <input checked={isAllRowsSelected} onClick={(e) => onSelectAllRows(e)} type="checkbox" />
+      </th>) : null}
 
-        {columnMetadata.map(({ headerCellContent, name, sortable }) =>
-          <th key={name} name={name} className={cn(headerCell, { [sortableColumnHeaderCell]: sortable })} onClick={() => sortable && changeSort(name)}>
-            {(headerCellContent || headerCellContent === '') ? headerCellContent : name}
-            { sortable && sortColumnName === name && <RowSelectTableSortIcon direction={sortDirection} />}
-          </th>
-        )}
-    </tr>
+    {columnMetadata.map(({ headerCellContent, name, sortable }) =>
+      <th key={name} name={name} className={cn(headerCell, { [sortableColumnHeaderCell]: sortable })} style={headerStyle} onClick={() => sortable && changeSort(name)}>
+        {(headerCellContent || headerCellContent === '') ? headerCellContent : name}
+        {sortable && sortColumnName === name && <RowSelectTableSortIcon direction={sortDirection} />}
+      </th>
+    )}
+  </tr>
   </thead>
 
 export const RowSelectTableRow = ({
-  data: rowData,
-  onClick,
-  columnMetadata,
-  onMouseEnter,
-  selectedLotId,
-  onClickHold,
-  getRowId,
-  className = null,
-  onSelectRow = null,
-  isRowSelected = null,
-  rowSelectionEnabled = null,
-}) => {
+                                    data: rowData,
+                                    onClick,
+                                    columnMetadata,
+                                    onMouseDown,
+                                    onMouseEnter,
+                                    selectedLotId,
+                                    onClickHold,
+                                    getRowId,
+                                    className = null,
+                                    onSelectRow = null,
+                                    isRowSelected = null,
+                                    rowSelectionEnabled = null,
+                                  }) => {
   const id = getRowId(rowData)
+  const selectEvent = {}
+  if (onMouseDown !== undefined) {
+    selectEvent.onMouseDown = () => onMouseDown(id)
+  }
+  if (onMouseEnter !== undefined) {
+    selectEvent.onMouseEnter = () => onMouseEnter(id)
+  }
+  let clazzName = cn({ [selectedRow]: selectedLotId === id }, className, row)
+  if (onMouseEnter === undefined && onMouseDown === undefined) {
+    clazzName = cn(className, row)
+  }
   return (
     <tr
       id={id}
-      onMouseEnter={() => onMouseEnter(id)}
+      {...selectEvent}
       onClick={(e) => onClick(e, rowData)}
-      className={cn({ [selectedRow]: selectedLotId === id }, className, row)}
+      className={clazzName}
       name={id}
     >
       {rowSelectionEnabled ? (
@@ -84,13 +96,13 @@ export const RowSelectTableRow = ({
  * @param props.sortAscending {bool} True for ascending, false for descending. (For sort icon in header)
  * @param props.noDataMessage {function} A function that returns a component to be displayed when there is no data available. Should be customised from Parent.
  */
- /**
-  * Configuration for your columns.
-  * @typedef RowSelectTable~ColumnMetadataObject
-  * @prop columnName {string} A key that matches a key in your props.results objects.
-  * @prop headerCellContent {(string | number | React.Element)} The content of this column's header cell.
-  * @prop {function} [display=(val) => val] An optional function to transform your data in results before displaying it in the table. Should return a valid React node.
-  * @prop {bool} [sortable=false] Whether to allow sorting by clicking the column header.
+/**
+ * Configuration for your columns.
+ * @typedef RowSelectTable~ColumnMetadataObject
+ * @prop columnName {string} A key that matches a key in your props.results objects.
+ * @prop headerCellContent {(string | number | React.Element)} The content of this column's header cell.
+ * @prop {function} [display=(val) => val] An optional function to transform your data in results before displaying it in the table. Should return a valid React node.
+ * @prop {bool} [sortable=false] Whether to allow sorting by clicking the column header.
  */
 class RowSelectTable extends Component {
   static defaultProps = {
@@ -98,6 +110,8 @@ class RowSelectTable extends Component {
     listenKeyboard: true,
     showFooter: true,
     // showHeader: true,
+    useClickHold: true,
+    useRowClick: false,
   }
 
   constructor(props) {
@@ -130,7 +144,7 @@ class RowSelectTable extends Component {
   clickHoldTimer = null
 
   handleKeyup = (e) => {
-    const { results, getRowId, listenKeyboard } = this.props
+    const { results, getRowId, listenKeyboard, currentPage, setPage, maxPage, pageSize } = this.props
 
     if (document.activeElement !== document.body || !listenKeyboard) {
       return
@@ -146,11 +160,21 @@ class RowSelectTable extends Component {
             selectedLotId: getRowId(results[currentSelectedIndex - 1]),
           })
       case 40: // down
-        return this.state.selectedIndex < (this.props.pageSize - 1) // suppose the pageSize is 20, so the maximum accessible index would be 19
+        return this.state.selectedIndex < (pageSize - 1) // suppose the pageSize is 20, so the maximum accessible index would be 19
           && this.setState({
             selectedIndex: currentSelectedIndex + 1,
             selectedLotId: getRowId(results[currentSelectedIndex + 1]),
           })
+      case 37: // left
+        if (currentPage > 0) {
+          setPage({ page: currentPage - 1, resultsPerPage: pageSize })
+        }
+        break
+      case 39: // right
+        if (currentPage + 1 < maxPage) {
+          setPage({ page: currentPage + 1, resultsPerPage: pageSize })
+        }
+        break
       default:
     }
   }
@@ -218,11 +242,23 @@ class RowSelectTable extends Component {
       results, maxPage, setPage, isLoading, pageSize, currentPage, pageSizeOptions,
       getRowId, columnMetadata, sortColumn, sortAscending, noDataMessage: NoDataMessage,
       rowSelectionEnabled, onSelectAllRows, isAllRowsSelected, onSelectRow, isRowSelected,
-      showFooter,
+      showFooter, headerStyle, resultCount,
     } = this.props
-    const pagerProps = { maxPage, setPage, resultsPerPage: pageSize, currentPage, pageSizeOptions }
-    const searchReturnsResults = !isLoading && results && results.length !== 0 && showFooter
+    const pagerProps = { maxPage, setPage, resultsPerPage: pageSize, currentPage, pageSizeOptions, resultCount }
+    const searchReturnsResults = (maxPage > 1 || pageSize !== pageSizeOptions[0])
+      && (!isLoading && results && results.length !== 0) && showFooter
     // <Griddle {...this.griddleProps()} ref={(g) => this._griddle = window._griddle = g} />
+    const selectEvent = {}
+    if (this.props.useRowClick === true) {
+      selectEvent.onMouseDown = this.handleRowMouseEnter
+    }
+    if (this.props.useRowClick === false) {
+      selectEvent.onMouseEnter = this.handleRowMouseEnter
+    }
+
+    const clickHold = (this.props.useClickHold)
+      ? { onClickHold: this.handleRowClickHold }
+      : { onClickHold: () => false }
 
     const displayResults = results.length === 0
       ? <tr><td className={cell} colSpan={columnMetadata.length}><NoDataMessage /></td></tr>
@@ -231,8 +267,8 @@ class RowSelectTable extends Component {
           key={i}
           data={r}
           getRowId={getRowId}
-          onMouseEnter={this.handleRowMouseEnter}
-          onClickHold={this.handleRowClickHold}
+          {...selectEvent}
+          {...clickHold}
           onClick={this.handleRowClick}
           selectedLotId={this.state.selectedLotId}
           columnMetadata={columnMetadata}
@@ -253,13 +289,20 @@ class RowSelectTable extends Component {
             rowSelectionEnabled={rowSelectionEnabled}
             onSelectAllRows={onSelectAllRows}
             isAllRowsSelected={isAllRowsSelected}
+            headerStyle={headerStyle}
           />
           <tbody>
-            {isLoading
-              ? <tr><td className={cell} colSpan={columnMetadata.length}>
-                <CircularProgress className={circularProgress} color="#073473" />
-              </td></tr>
-              : displayResults}
+          {isLoading
+            ? (
+              <tr>
+                <td className={cell} colSpan={columnMetadata.length}>
+                  <div className={progressContainer}>
+                    <CircularProgress className={circularProgress} color="#073473" />
+                  </div>
+                </td>
+              </tr>
+            )
+            : displayResults}
           </tbody>
         </table>
         {searchReturnsResults && <Footer {...pagerProps} />}
@@ -290,6 +333,10 @@ RowSelectTable.propTypes = {
   onSelectRow: PropTypes.func,
   listenKeyboard: PropTypes.bool,
   showFooter: PropTypes.bool,
+  headerStyle: PropTypes.shape({}),
+  useRowClick: PropTypes.bool,
+  useClickHold: PropTypes.bool,
+  resultCount: PropTypes.number,
 }
 
 export default RowSelectTable

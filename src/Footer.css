@@ -47,6 +47,8 @@
   width: 100%;
   text-align: center;
   background-color: #ededed;
+  display: flex;
+  align-items: center;
 }
 
 .mainPagerContent:hover {
@@ -54,22 +56,16 @@
  }
 
 .showResults {
-  display: inline-block;
-  width: 65%;
-  text-align: left;
-   font-size: 12px; 
+  font-size: 12px;
 }
 
 .pagerContent {
   margin-left: auto;
   padding: 10px;
-  display: inline-block;
-  width: 35%;
-  text-align: right;
 }
 
 .dropDown {
-font-size: 12px;
+  font-size: 12px;
 }
 
 .textField {
